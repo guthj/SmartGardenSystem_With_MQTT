@@ -1,17 +1,10 @@
 #
-# Smart Garden System Raspberry Pi Software
-# SDL_Pi_SmartGardenSystem
+# Smart Garden System Raspberry Pi Software Adaptation Alpha
 #
 # SwitchDoc Labs September 2018
 #
 
 # all SmartGardenSystem Documentation on  shop.switchdoc.com under Smart Garden System
-
-
-December 27, 2018 - Version 009 - Fixed problem with PubNub library update<BR>
-October 28, 2018 - Version 008 - Fixed OLED Display, Blynk lock, disable manual water option, select non-existant plant water<BR>
-October 14, 2018 - Version 007 - Initial Release plus Plant 6-9 support<BR>
-October 11, 2018 - Version 006 - Initial Release minus Plant 6-9 support<BR>
 
 # basic install instructions for supporting libraries
 
@@ -55,6 +48,18 @@ follow the installation directions in README.md<BR>
 
 Make sure you go down into the python directory and follow the README.md in that directory<BR>
 use "sudo" if you run into permissions problems with the python installation<BR>
+
+#Installing MQTT:
+sudo wget https://repo.mosquitto.org/debian/mosquitto-repo.gpg.key
+sudo apt-key add mosquitto-repo.gpg.key
+cd /etc/apt/sources.list.d/
+sudo wget http://repo.mosquitto.org/debian/mosquitto-buster.list
+sudo apt-get update
+sudo apt-get install mosquitto mosquitto-clients
+sudo pip install paho-mqtt
+
+server is localhost (127.0.0.1) port is 1883
+
 
 # final thoughts
 
