@@ -1244,7 +1244,7 @@ if __name__ == '__main__':
     scheduler.add_job(blinkLED, 'interval', seconds=5, args=[0,Color(0,0,255),1,0.250])
     
     # blink life light
-    scheduler.add_job(pixelDriver.statusLEDs, 'interval', seconds=15, args=[strip, PixelLock])
+    #scheduler.add_job(pixelDriver.statusLEDs, 'interval', seconds=15, args=[strip, PixelLock])
 
 
     # update device state
