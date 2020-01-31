@@ -102,20 +102,21 @@ def statusLEDs(strip, PixelLock):
             #theaterChaseRainbow(strip)
             if (config.DEBUG):
                 print "rainbow end"
+        if state.showDryness:
 
-        for i in range(1,8):
-            strip.setPixelColor(i,Color(0,0,0))
+            for i in range(1,8):
+                strip.setPixelColor(i,Color(0,0,0))
 
-        time.sleep(0.2)
-        strip.show()
-        setDryness(strip, PixelLock)
-        time.sleep(2.0)
+            time.sleep(0.2)
+            strip.show()
+            setDryness(strip, PixelLock)
+            time.sleep(2.0)
 
-        for i in range(1,8):
-            strip.setPixelColor(i,Color(0,0,0))
+            for i in range(1,8):
+                strip.setPixelColor(i,Color(0,0,0))
     
-        time.sleep(0.2)
-        strip.show()
+            time.sleep(0.2)
+            strip.show()
         setWaterLevel(strip, PixelLock)
         time.sleep(2.0)
 
