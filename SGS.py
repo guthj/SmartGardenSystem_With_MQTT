@@ -6,9 +6,9 @@
 # SwitchDoc Labs
 #
 
-SGSVERSION = "009"
+SGSVERSION = "X-009"
 #imports 
-
+import paho.mqtt.client as mqtt
 import sys, traceback
 import os
 import RPi.GPIO as GPIO
@@ -87,10 +87,41 @@ import extendedPlants
 
 DEBUG = True
 
+#############
+# Watering Enabled True or False
+############
+
+#set default value
+WillWater = True
+
 #initialization
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
+
+
+################
+# MQTT Functions
+################
+
+def on_connect(client, userdata, flags, rc):
+    print("Connected with result code "+str(rc))
+
+    # Subscribing in on_connect() means that if we lose the connection and
+    # reconnect then subscriptions will be renewed.
+
+    client.subscribe("/SGS/Plant1/Pump/setOn")
+
+def on_message(client, userdata, msg):
+    print(msg.topic+" "+str(msg.payload))
+    if msg.topic == "/SGS/Plant1/Pump/setOn":
+        if msg.payload == "true":
+            client.publish("/SGS/Plant1/Pump/getOn", "true")
+            print "turn on water"
+            truepump = pumpWater(1, 1)
+        if msg.payload == "false":
+            client.publish("/SGS/Plant1/Pump/getOn", "false")
+            stopPump()
 
 ################
 # Update State Lock - keeps smapling from being interrupted (like by checkAndWater)
@@ -124,7 +155,7 @@ def blinkLED(pixel, color, times, length):
             strip.setPixelColor(0, color)
             strip.show()
             time.sleep(length)
-	
+        
         strip.setPixelColor(0, Color(0,0,0))
         strip.show()
 
@@ -164,20 +195,18 @@ def pumpWater(timeInSeconds, plantNumber):
 
     i = timeInSeconds 
     while (i > 0.0):
-  	    time.sleep(1);   #Wait 1 second
+            time.sleep(1);   #Wait 1 second
             i = i -1.0    
     if (plantNumber == 1):
         stopPump()
     else:
         extendedPlants.turnOffExtendedPump(plantNumber, GDE_Ext1, GDE_Ext2)
-
-
     return 1
 
 def forceWaterPlant(plantNumber):
 
             previousState = state.SGS_State;
-	    #if(state.SGS_State == state.SGS_States.Monitor):
+            #if(state.SGS_State == state.SGS_States.Monitor):
             state.SGS_State =state.SGS_States.Watering
             if (config.USEPUBNUB):
                 publishStatusToPubNub()
@@ -201,14 +230,14 @@ def waterPlant(plantNumber):
             # We want to put off this state if Update State is .is locked.   That will prevent Update State from being hosed by this state machine
             if (config.DEBUG):
                   print "WP-Attempt Aquire"
-	    UpdateStateLock.acquire()
+            UpdateStateLock.acquire()
             if (config.DEBUG):
                   print "WP-UpdateStateLock acquired"
 
 
 
             previousState = state.SGS_State;
-	    #if(state.SGS_State == state.SGS_States.Monitor):
+            #if(state.SGS_State == state.SGS_States.Monitor):
             state.SGS_State =state.SGS_States.Watering
             if (config.USEPUBNUB):
                 publishStatusToPubNub()
@@ -269,7 +298,7 @@ try:
         display.clear()
         display.display()
         config.OLED_Present = True
-	OLEDLock = threading.Lock()
+        OLEDLock = threading.Lock()
 except:
         config.OLED_Present = False
         print "Smart Garden System must have OLED Present"
@@ -468,18 +497,15 @@ import util
 
 if (config.USEPUBNUB):
     pnconf = PNConfiguration()
- 
     pnconf.subscribe_key = config.Pubnub_Subscribe_Key
     pnconf.publish_key = config.Pubnub_Publish_Key
-  
-
     pubnub = PubNub(pnconf)
 
 def publish_callback(result, status):
         if (config.DEBUG):
-		print "status.is_error", status.is_error()
-		print "status.original_response", status.original_response
-		pass
+                print "status.is_error", status.is_error()
+                print "status.original_response", status.original_response
+                pass
         # handle publish result, status always present, result if successful
         # status.isError to see if error happened
 
@@ -489,7 +515,7 @@ def publishStatusToPubNub():
         myMessage["SmartPlantPi_CurrentStatus"] = state.SGS_Values[state.SGS_State]
         
         if (config.DEBUG):
-        	print myMessage
+                print myMessage
 
         #pubnub.publish().channel('SmartPlantPi_Data').message(myMessage).async(publish_callback)
         pubnub.publish().channel('SmartPlantPi_Data').message(myMessage)
@@ -500,7 +526,7 @@ def publishEventToPubNub():
         myMessage["SmartPlantPi_Last_Event"] = state.Last_Event
         
         if (config.DEBUG):
-        	print myMessage
+                print myMessage
 
         #pubnub.publish().channel('SmartPlantPi_Data').message(myMessage).async(publish_callback)
         pubnub.publish().channel('SmartPlantPi_Data').message(myMessage)
@@ -511,15 +537,15 @@ def publishAlarmToPubNub(alarmText):
         myMessage["SmartPlantPi_Alarm"] = alarmText 
         
         if (config.DEBUG):
-        	print myMessage
+                print myMessage
 
         #pubnub.publish().channel('SmartPlantPi_Data').message(myMessage).async(publish_callback)
         pubnub.publish().channel('SmartPlantPi_Data').message(myMessage)
 
 def publishStateToPubNub():
-	
+        
         if (config.DEBUG):
-        	print('Publishing Data to PubNub time: %s' % datetime.now())
+                print('Publishing Data to PubNub time: %s' % datetime.now())
 
 
         myMessage = {}
@@ -545,7 +571,7 @@ def publishStateToPubNub():
             myMessage["SmartPlantPi_Water_Full_Direction"] = "{}".format("0" )
 
         if (config.DEBUG):
-        	print myMessage
+                print myMessage
 
         #pubnub.publish().channel('SmartPlantPi_Data').message(myMessage).async(publish_callback)
         pubnub.publish().channel('SmartPlantPi_Data').message(myMessage)
@@ -579,12 +605,12 @@ def checkAndWater():
         if (config.DEBUG):
             print "checkandWater: Plant#%i %0.2f Threshold / %0.2f Current" % (i,state.Moisture_Threshold, state.Moisture_Humidity_Array[i-1])
         if (state.Moisture_Humidity_Array[i-1] <= state.Alarm_Moisture_Sensor_Fault):
-	      print "No Watering Plant #%i - Moisture Sensor Fault Detected!"	% (i)	
+              print "No Watering Plant #%i - Moisture Sensor Fault Detected!"        % (i)        
         else:
-    	    if (state.Moisture_Threshold > state.Moisture_Humidity_Array[i-1]):
-                if (config.DEBUG):
-	    	    print "Attempting to Watering Plant"
-            	waterPlant(i);
+                if (state.Moisture_Threshold > state.Moisture_Humidity_Array[i-1]):
+                        if (config.DEBUG):
+                                print "Attempting to Watering Plant"
+                        waterPlant(i);
     
 def forceWaterPlantCheck():
     if ((state.Plant_Water_Request == True) and (state.Plant_Number_Water_Request > 0)):
@@ -654,18 +680,18 @@ def returnStatusLine(device, state):
 
 
 def saveState():
-	    output = open('SGSState.pkl', 'wb')
+            output = open('SGSState.pkl', 'wb')
 
-	    # Pickle dictionary using protocol 0.
-	    pickle.dump(state.Moisture_Threshold, output)
-	    pickle.dump(state.EnglishMetric, output)
-	    pickle.dump(state.Alarm_Temperature, output)
-	    pickle.dump(state.Alarm_Moisture, output)
-	    pickle.dump(state.Alarm_Water, output)
-	    pickle.dump(state.Alarm_Air_Quality, output)
-	    pickle.dump(state.Alarm_Active, output)
+            # Pickle dictionary using protocol 0.
+            pickle.dump(state.Moisture_Threshold, output)
+            pickle.dump(state.EnglishMetric, output)
+            pickle.dump(state.Alarm_Temperature, output)
+            pickle.dump(state.Alarm_Moisture, output)
+            pickle.dump(state.Alarm_Water, output)
+            pickle.dump(state.Alarm_Air_Quality, output)
+            pickle.dump(state.Alarm_Active, output)
 
-	    output.close()
+            output.close()
 
 ############
 # Setup Moisture Pin for GrovePowerSave
@@ -689,18 +715,18 @@ def updateState():
             state.SGS_State =state.SGS_States.Sampling
             if (config.USEBLYNK):
                 updateBlynk.blynkStatusUpdate()
-	    if (config.DEBUG):
-            	print "----------------- "
-            	print "Update State"
-            	print "----------------- "
-            if (config.Sunlight_Present == True):
-        			if (config.DEBUG):
-                                	print " Sunlight Vi/state.Sunlight_IR/UV Sensor"
-            else:
-        			if (config.DEBUG):
-                                	print " Sunlight Vi/state.Sunlight_IR/UV Sensor Not Present"
             if (config.DEBUG):
-            	print "----------------- "
+                    print "----------------- "
+                    print "Update State"
+                    print "----------------- "
+            if (config.Sunlight_Present == True):
+                                if (config.DEBUG):
+                                        print " Sunlight Vi/state.Sunlight_IR/UV Sensor"
+            else:
+                                if (config.DEBUG):
+                                        print " Sunlight Vi/state.Sunlight_IR/UV Sensor Not Present"
+            if (config.DEBUG):
+                    print "----------------- "
     
             if (config.Sunlight_Present == True):
                     ################
@@ -708,12 +734,13 @@ def updateState():
                     state.Sunlight_IR = SI1145Lux.SI1145_IR_to_Lux(Sunlight_Sensor.readIR())
                     state.Sunlight_UV = Sunlight_Sensor.readUV()
                     state.Sunlight_UVIndex = state.Sunlight_UV / 100.0
+                    client.publish("/SGS/Sunlight/Lux", (int(state.Sunlight_Vis*10000)/10000))
 
-            	    if (config.DEBUG):
-                    	print 'Sunlight Visible:  ' + str(state.Sunlight_Vis)
-                    	print 'Sunlight state.Sunlight_IR:       ' + str(state.Sunlight_IR)
-                    	print 'Sunlight UV Index (RAW): ' + str(state.Sunlight_UV)
-                    	print 'Sunlight UV Index: ' + str(state.Sunlight_UVIndex)
+                    if (config.DEBUG):
+                            print 'Sunlight Visible:  ' + str(state.Sunlight_Vis)
+                            print 'Sunlight state.Sunlight_IR:       ' + str(state.Sunlight_IR)
+                            print 'Sunlight UV Index (RAW): ' + str(state.Sunlight_UV)
+                            print 'Sunlight UV Index: ' + str(state.Sunlight_UVIndex)
                     ################
     
     
@@ -731,12 +758,16 @@ def updateState():
                     print ("From RAW Moisture Array")
                     for i in range(0,config.plant_number):     
                         print "plant #%i: Moisture: %0.2f" % (i+1, state.Raw_Moisture_Humidity_Array[i])
-
+                for i in range(len(state.Moisture_Humidity_Array)):
+                    print "/SGS/Plant"+str(i)+"/Moisture:   " + str(int(state.Moisture_Humidity_Array[i]))
+                    client.publish(("/SGS/Plant"+str(i)+"/Moisture"), int(state.Moisture_Humidity_Array[i]))
+                    
                 state.AirQuality_Sensor_Value =  AirQualitySensorLibrary.readAirQualitySensor(ads1115)
     
                 sensorList = AirQualitySensorLibrary.interpretAirQualitySensor(state.AirQuality_Sensor_Value)
-            	if (config.DEBUG):
-                	print "Sensor Value=%i --> %s  | %i"% (state.AirQuality_Sensor_Value, sensorList[0], sensorList[1])
+                client.publish("/SGS/AirQuality/Type", sensorList[1])
+                if (config.DEBUG):
+                        print "Sensor Value=%i --> %s  | %i"% (state.AirQuality_Sensor_Value, sensorList[0], sensorList[1])
 
                 state.AirQuality_Sensor_Number = sensorList[1] 
                 state.AirQuality_Sensor_Text = sensorList[0] 
@@ -750,7 +781,8 @@ def updateState():
                 # leave the previous value
             else:
                 state.Tank_Percentage_Full = percentFull
-        
+            client.publish("/SGS/Reservoir/Percentage", state.Tank_Percentage_Full)
+            
             if (state.Tank_Percentage_Full > config.Tank_Pump_Level):
                 state.Pump_Water_Full = True
             else:
@@ -761,10 +793,11 @@ def updateState():
             if (config.hdc1000_Present):
                 state.Temperature= hdc1000.readTemperature()
                 state.Humidity = hdc1000.readHumidity()
-    
-           	if (config.DEBUG):
-            		print 'Temp             = {0:0.3f} deg C'.format(state.Temperature)
-            		print 'Humidity         = {0:0.2f} %'.format(state.Humidity)
+                client.publish("/SGS/HumTemp/Temp", (int(state.Temperature*10)/10))
+                client.publish("/SGS/HumTemp/Hum", (int(state.Humidity)))
+                if (config.DEBUG):
+                            print 'Temp             = {0:0.3f} deg C'.format(state.Temperature)
+                            print 'Humidity         = {0:0.2f} %'.format(state.Humidity)
     
             state.SGS_State =state.SGS_States.Monitor
             if (config.USEBLYNK):
@@ -776,7 +809,7 @@ def updateState():
 
                     if (config.DEBUG):
                           print "Attempt OLEDLock acquired"
-		    OLEDLock.acquire()
+                    OLEDLock.acquire()
                     if (config.DEBUG):
                           print "OLEDLock acquired"
                     Scroll_SSD1306.addLineOLED(display,  ("----------"))
@@ -804,7 +837,7 @@ def updateState():
                         
                     if (config.DEBUG):
                         print "Attempt OLEDLock released"
-		    OLEDLock.release()
+                    OLEDLock.release()
                     if (config.DEBUG):
  
                         print "OLEDLock released"
@@ -837,9 +870,9 @@ def updateState():
 #############################
 def checkForAlarms():
 
-	# check to see alarm
+        # check to see alarm
         if (config.DEBUG):
-		print "checking for alarm"
+                print "checking for alarm"
                 if (state.Alarm_Active == True):
                     print "Alarm_Active = True"
                 else:
@@ -848,31 +881,31 @@ def checkForAlarms():
         list = startAlarmStatementDisplay(display)
 
         lastAlarm = state.Alarm_Active
-	if (state.Alarm_Active == True):
-		activeAlarm = False
+        if (state.Alarm_Active == True):
+                activeAlarm = False
                 state.Is_Alarm_MoistureFault = False
-    		
+                    
                 for i in range(0,config.plant_number):
                     if (state.Moisture_Humidity_Array[i] <= state.Alarm_Moisture_Sensor_Fault):
-        		if (config.DEBUG):
+                        if (config.DEBUG):
                             print "Plant #{:d}---->Moisture Sensor Fault".format(i+1)
                         displayAlarmOLEDDisplay(list, "#{:d}MS FLT!".format(i), 10)
                         state.Is_Alarm_MoistureFault = True
-        	
+                
                 
                 if (state.Alarm_Air_Quality < state.AirQuality_Sensor_Value):
                     if (config.DEBUG):
-			print "state.Alarm_Air_Quality=", state.Alarm_Air_Quality
-			print "state.AirQuality_Sensor_Value", state.AirQuality_Sensor_Value
+                        print "state.Alarm_Air_Quality=", state.Alarm_Air_Quality
+                        print "state.AirQuality_Sensor_Value", state.AirQuality_Sensor_Value
                     state.Is_Alarm_AirQuality = True
-	            activeAlarm = True
+                    activeAlarm = True
                 else:
                     state.Is_Alarm_AirQuality = False
 
-		if (state.Alarm_Temperature >= state.Temperature):
-        	    if (config.DEBUG):
-			print "---->Low Temperature Alarm!"
-	            activeAlarm = True
+                if (state.Alarm_Temperature >= state.Temperature):
+                    if (config.DEBUG):
+                        print "---->Low Temperature Alarm!"
+                    activeAlarm = True
                     state.Is_Alarm_Temperature = True
                 else:
                     state.Is_Alarm_Temperature = False
@@ -880,24 +913,24 @@ def checkForAlarms():
                 state.Is_Alarm_Moisture = False
                 for i in range(0,config.plant_number):
                     if (state.Moisture_Humidity_Array[i] <= state.Alarm_Moisture):
-        		if (config.DEBUG):
+                        if (config.DEBUG):
                             print "Plant #{:d}---->Moisture Low Alarm".format(i+1)
                         state.Is_Alarm_Moisture = True
-		        activeAlarm = True
+                        activeAlarm = True
 
-		if (state.Alarm_Water  == True ):
-		    if (state.Pump_Water_Full == False):
-        		if (config.DEBUG):
-		        	print "---->Water Empty Alarm!"
-			activeAlarm = True
+                if (state.Alarm_Water  == True ):
+                    if (state.Pump_Water_Full == False):
+                        if (config.DEBUG):
+                                print "---->Water Empty Alarm!"
+                        activeAlarm = True
                         state.Is_Alarm_Water = True
                 else:
                     state.Is_Alarm_Water = False
-		
+                
 
-        	if (config.DEBUG):
-			print "activeAlarm = ", activeAlarm		
-		if (activeAlarm == True):
+                if (config.DEBUG):
+                        print "activeAlarm = ", activeAlarm                
+                if (activeAlarm == True):
                     # hold for display
                     displayActiveAlarms()
                     state.Last_Event = "Alarm Active: "+time.strftime("%Y-%m-%d %H:%M:%S")
@@ -914,9 +947,9 @@ def checkForAlarms():
                     publishEventToPubNub()
                 if (config.USEBLYNK):
                     updateBlynk.blynkEventUpdate()
-		
+                
                 if (config.USEPUBNUB): 
-	            publishAlarmToPubNub("")
+                    publishAlarmToPubNub("")
                 if (config.USEBLYNK):
                     updateBlynk.blynkAlarmUpdate()    
 
@@ -929,7 +962,7 @@ def centerText(text,sizeofline):
                 for x in range (0, spacesCount):
                         mytext = mytext + " "
         return mytext+text
-	
+        
 def startAlarmStatementDisplay(display):
 
         width = 128
@@ -999,76 +1032,76 @@ def displayActiveAlarms():
         if (config.DEBUG):
             print "DA-UpdateStateLock acquired"
 
-	# display Alarm
+        # display Alarm
         if (config.DEBUG):
-		print "Display Alarms"
-    	if ((config.OLED_Present == True) and (state.SGS_State == state.SGS_States.Monitor)):
+                print "Display Alarms"
+        if ((config.OLED_Present == True) and (state.SGS_State == state.SGS_States.Monitor)):
 
                 if (config.DEBUG):
                       print "Attempt OLEDLock acquired"
-        	OLEDLock.acquire()
+                OLEDLock.acquire()
                 if (config.DEBUG):
                       print "OLEDLock acquired"
-		
-        	state.SGS_State =state.SGS_States.Alarm
+                
+                state.SGS_State =state.SGS_States.Alarm
                 if (config.USEPUBNUB):
                     publishStatusToPubNub()
                 if (config.USEBLYNK):
                     updateBlynk.blynkStatusUpdate()
-		# initialize 
-		list = startAlarmStatementDisplay(display)
-		# Flash white screen w/Alarm in middle
-		displayAlarmStatementOLEDDisplay(list, "ALARM!",lengthofline=13)
+                # initialize 
+                list = startAlarmStatementDisplay(display)
+                # Flash white screen w/Alarm in middle
+                displayAlarmStatementOLEDDisplay(list, "ALARM!",lengthofline=13)
                 time.sleep(0.25)
-		# wait 2 seconds
-		finishAlarmStatementDisplay(list)
+                # wait 2 seconds
+                finishAlarmStatementDisplay(list)
 
-		# display alarms, one per screen on black screen
-		list = startAlarmStatementDisplay(display)
+                # display alarms, one per screen on black screen
+                list = startAlarmStatementDisplay(display)
 
 
                 state.Is_Alarm_MoistureFault = False
-    		
+                    
                 for i in range(0,config.plant_number):
                     if (state.Moisture_Humidity_Array[i] <= state.Alarm_Moisture_Sensor_Fault):
-        		if (config.DEBUG):
+                        if (config.DEBUG):
                             print "Plant #{:d}---->Moisture Sensor Fault".format(i+1)
                         displayAlarmOLEDDisplay(list, "#{:d}MS FLT!".format(i), 10)
                         state.Is_Alarm_MoistureFault = True
                         time.sleep(0.25)
 
-		if (state.Alarm_Temperature >= state.Temperature):
-        		if (config.DEBUG):
-				print "---->Temperature Alarm!"
-			displayAlarmOLEDDisplay(list, "Low Temp", 10)
-		  	time.sleep(0.25)
+                if (state.Alarm_Temperature >= state.Temperature):
+                        if (config.DEBUG):
+                                print "---->Temperature Alarm!"
+                        displayAlarmOLEDDisplay(list, "Low Temp", 10)
+                        time.sleep(0.25)
 
-		if (state.Alarm_Moisture >= state.Moisture_Humidity):
-			displayAlarmOLEDDisplay(list, "Plant Dry", 14)
-		  	time.sleep(0.25)
+                if (state.Alarm_Moisture >= state.Moisture_Humidity):
+                        displayAlarmOLEDDisplay(list, "Plant Dry", 14)
+                        time.sleep(0.25)
 
-		if (state.Alarm_Water  == True ):
-			if (state.Pump_Water_Full == False):
-				displayAlarmOLEDDisplay(list, "No Water", 12)
-			        time.sleep(0.25)
+                if (state.Alarm_Water  == True ):
+                        if (state.Pump_Water_Full == False):
+                                displayAlarmOLEDDisplay(list, "No Water", 12)
+                                time.sleep(0.25)
 
-		if (state.Alarm_Air_Quality <  state.AirQuality_Sensor_Value):
-			displayAlarmOLEDDisplay(list, "Air Quality", 14)
-			time.sleep(0.25)
-
-
-		finishAlarmStatementDisplay(list)
+                if (state.Alarm_Air_Quality <  state.AirQuality_Sensor_Value):
+                        displayAlarmOLEDDisplay(list, "Air Quality", 14)
+                        time.sleep(0.25)
 
 
-		# Flash white to end
-		list = startAlarmStatementDisplay(display)
-		# Flash white screen w/Alarm in middle
-		displayAlarmStatementOLEDDisplay(list, "ALARM!",lengthofline=15)
-		time.sleep(1.0)
-		# wait 1 seconds
-		finishAlarmStatementDisplay(list)
+                finishAlarmStatementDisplay(list)
 
-        	state.SGS_State = state.SGS_States.Monitor
+
+                # Flash white to end
+                list = startAlarmStatementDisplay(display)
+                # Flash white screen w/Alarm in middle
+                displayAlarmStatementOLEDDisplay(list, "ALARM!",lengthofline=15)
+                time.sleep(1.0)
+                # wait 1 seconds
+                finishAlarmStatementDisplay(list)
+
+                state.SGS_State = state.SGS_States.Monitor
                 if (config.USEBLYNK):
                     updateBlynk.blynkStatusUpdate()
 
@@ -1077,13 +1110,13 @@ def displayActiveAlarms():
 
                 if (config.DEBUG):
                     print "Attempt OLEDLock released"
-        	OLEDLock.release()
+                OLEDLock.release()
                 if (config.DEBUG):
                     print "OLEDLock released"
 
-		if (state.Alarm_Active == False):   # it has been disabled
+                if (state.Alarm_Active == False):   # it has been disabled
                         if (config.USEPUBNUB):
-			    publishAlarmToPubNub("deactivated")
+                            publishAlarmToPubNub("deactivated")
                         if (config.USEBLYNK):
                             updateBlynk.blynkAlarmUpdate()    
         if (config.DEBUG):
@@ -1147,9 +1180,9 @@ if __name__ == '__main__':
     print "----------------------"
     value = extendedPlants.readExtendedMoisture(1, None, ads1115, None, None)
     if (value <= state.Alarm_Moisture_Sensor_Fault):
-    	 print "Moisture Sensor Fault:   Not In Plant or not Present. Value %0.2f%%" % value 
+             print "Moisture Sensor Fault:   Not In Plant or not Present. Value %0.2f%%" % value 
     else:
-    	print returnStatusLine("Moisture Sensor",True)
+            print returnStatusLine("Moisture Sensor",True)
     print "----------------------"
 
 
@@ -1163,23 +1196,35 @@ if __name__ == '__main__':
     ##############
     if (os.path.exists('SGSState.pkl')):
 
-    	input = open('SGSState.pkl', 'rb')
+            input = open('SGSState.pkl', 'rb')
 
-    	# Pickle dictionary using protocol 0.
-    	state.Moisture_Threshold = pickle.load(input)
-    	state.EnglishMetric = pickle.load(input)
-    	state.Alarm_Temperature = pickle.load(input)
-    	state.Alarm_Moisture = pickle.load(input)
-    	state.Alarm_Water = pickle.load(input)
-    	state.Alarm_Air_Quality = pickle.load(input)
-    	state.Alarm_Active = pickle.load(input)
+            # Pickle dictionary using protocol 0.
+            state.Moisture_Threshold = pickle.load(input)
+            state.EnglishMetric = pickle.load(input)
+            state.Alarm_Temperature = pickle.load(input)
+            state.Alarm_Moisture = pickle.load(input)
+            state.Alarm_Water = pickle.load(input)
+            state.Alarm_Air_Quality = pickle.load(input)
+            state.Alarm_Active = pickle.load(input)
 
-    	input.close()
-	
+            input.close()
+        
       '''
+    print "Start MQTT"
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.connect("localhost", 1883, 60)
 
+    # Blocking call that processes network traffic, dispatches callbacks and
+    # handles reconnecting.
+    # Other loop*() functions are available that give a threaded interface and a
+    # manual interface.
+    client.loop_start()
 
-    scheduler.add_listener(ap_my_listener, apscheduler.events.EVENT_JOB_ERROR)	
+    print "MQTT client started"
+
+    scheduler.add_listener(ap_my_listener, apscheduler.events.EVENT_JOB_ERROR)        
 
 
     # prints out the date and time to console
@@ -1213,15 +1258,15 @@ if __name__ == '__main__':
     # check and water  
     scheduler.add_job(checkAndWater, 'interval', minutes=15)
 
-	
+        
     # save state to pickle file 
     #scheduler.add_job(saveState, 'interval', minutes=30)
 
     #init blynk app state
     if (config.USEBLYNK):
         updateBlynk.blynkInit()
-	
-	
+        
+        
     # start scheduler
     scheduler.start()
     print "-----------------"
@@ -1248,15 +1293,15 @@ if __name__ == '__main__':
         OLEDLock.acquire()
         if (config.DEBUG):
              print "OLEDLock acquired"
-	# display logo
-    	image = Image.open('SmartPlantPiSquare128x64.ppm').convert('1')
+        # display logo
+        image = Image.open('SmartPlantPiSquare128x64.ppm').convert('1')
 
-	display.image(image)
-	display.display()
-	time.sleep(3.0)
-	display.clear()
+        display.image(image)
+        display.display()
+        time.sleep(3.0)
+        display.clear()
 
-	Scroll_SSD1306.addLineOLED(display,  ("    Welcome to "))
+        Scroll_SSD1306.addLineOLED(display,  ("    Welcome to "))
         Scroll_SSD1306.addLineOLED(display,  ("   Smart Garden "))
         if (config.DEBUG):
              print "Attempt OLEDLock released"
@@ -1277,33 +1322,33 @@ if __name__ == '__main__':
 
             checkAndWater()
             checkForAlarms()
-	    #############
-	    #  Main Loop
-    	    #############
+            #############
+            #  Main Loop
+                #############
             
 
 
             while True:
-		time.sleep(10.0)
-		
+                time.sleep(10.0)
+                
 
 
     except KeyboardInterrupt:  
-    	    # here you put any code you want to run before the program   
-    	    # exits when you press CTRL+C  
+                # here you put any code you want to run before the program   
+                # exits when you press CTRL+C  
             print "exiting program" 
     #except:  
-    	    # this catches ALL other exceptions including errors.  
-    	    # You won't get any error messages for debugging  
-    	    # so only use it once your code is working  
-            #    	print "Other error or exception occurred!"  
+                # this catches ALL other exceptions including errors.  
+                # You won't get any error messages for debugging  
+                # so only use it once your code is working  
+            #            print "Other error or exception occurred!"  
   
     finally:  
-	    #time.sleep(5)
-    	    #GPIO.cleanup() # this ensures a clean exit 
-	    stopPump()
+            #time.sleep(5)
+                #GPIO.cleanup() # this ensures a clean exit 
+            stopPump()
             for i in range(2,config.plant_number+1):
                 extendedPlants.turnOffExtendedPump(i, GDE_Ext1, GDE_Ext2)
-	    #saveState()
+            #saveState()
 
-	    print "done"
+            print "done"
