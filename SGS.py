@@ -109,6 +109,7 @@ def on_connect(client, userdata, flags, rc):
     # reconnect then subscriptions will be renewed.
 
     client.subscribe("/SGS/Plant1/Pump/setOn")
+    client.subscribe("/SGS/enableAutomaticWatering/setOn")
 
 def on_message(client, userdata, msg):
     print(msg.topic+" "+str(msg.payload))
@@ -130,6 +131,13 @@ def on_message(client, userdata, msg):
             state.WillWater = False
             print "tried turning off, new State: " + str (state.WillWater)
         
+def mqtt_startVals():
+    if state.WillWater:
+        client.publish("/SGS/enableAutomaticWatering/getOn", "true")
+    else:
+        client.publish("/SGS/enableAutomaticWatering/getOn", "false")
+        
+    client.publish("/SGS/Plant1/Pump/getOn", "false")
 ################
 # Update State Lock - keeps smapling from being interrupted (like by checkAndWater)
 ################
@@ -191,6 +199,7 @@ def stopPump():
         blinkLED(0,Color(255,0,0),1,0.5)
         GPIO.output(config.USBEnable, GPIO.HIGH)
         GPIO.output(config.USBControl, GPIO.LOW)
+        client.publish("/SGS/Plant1/Pump/getOn", "false")
 
 def pumpWater(timeInSeconds, plantNumber):
     if state.WillWater:
@@ -1231,9 +1240,8 @@ if __name__ == '__main__':
     # Other loop*() functions are available that give a threaded interface and a
     # manual interface.
     client.loop_start()
-
+    mqtt_startVals()
     print "MQTT client started"
-
     scheduler.add_listener(ap_my_listener, apscheduler.events.EVENT_JOB_ERROR)        
 
 
