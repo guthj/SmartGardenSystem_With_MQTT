@@ -91,8 +91,6 @@ DEBUG = True
 # Watering Enabled True or False
 ############
 
-#set default value
-WillWater = True
 
 #initialization
 
@@ -118,11 +116,20 @@ def on_message(client, userdata, msg):
         if msg.payload == "true":
             client.publish("/SGS/Plant1/Pump/getOn", "true")
             print "turn on water"
-            truepump = pumpWater(1, 1)
+            pumpWater(1, 1)
         if msg.payload == "false":
             client.publish("/SGS/Plant1/Pump/getOn", "false")
             stopPump()
-
+    if msg.topic == "/SGS/enableAutomaticWatering/setOn":
+        if msg.payload == "true":
+            client.publish("/SGS/enableAutomaticWatering/getOn", "true")
+            state.WillWater = True
+            print "tried turning on, new State: " + str (state.WillWater)
+        if msg.payload == "false":
+            client.publish("/SGS/enableAutomaticWatering/getOn", "false")
+            state.WillWater = False
+            print "tried turning off, new State: " + str (state.WillWater)
+        
 ################
 # Update State Lock - keeps smapling from being interrupted (like by checkAndWater)
 ################
@@ -186,21 +193,22 @@ def stopPump():
         GPIO.output(config.USBControl, GPIO.LOW)
 
 def pumpWater(timeInSeconds, plantNumber):
-    if (timeInSeconds <= 0.0):
-        return 0.0
-    if (plantNumber == 1):
-        startPump()
-    else:
-        extendedPlants.turnOnExtendedPump(plantNumber, GDE_Ext1, GDE_Ext2)
+    if state.WillWater:
+        if (timeInSeconds <= 0.0):
+            return 0.0
+        if (plantNumber == 1):
+            startPump()
+        else:
+                extendedPlants.turnOnExtendedPump(plantNumber, GDE_Ext1, GDE_Ext2)
 
-    i = timeInSeconds 
-    while (i > 0.0):
+        i = timeInSeconds 
+        while (i > 0.0):
             time.sleep(1);   #Wait 1 second
             i = i -1.0    
-    if (plantNumber == 1):
-        stopPump()
-    else:
-        extendedPlants.turnOffExtendedPump(plantNumber, GDE_Ext1, GDE_Ext2)
+        if (plantNumber == 1):
+            stopPump()
+        else:
+            extendedPlants.turnOffExtendedPump(plantNumber, GDE_Ext1, GDE_Ext2)
     return 1
 
 def forceWaterPlant(plantNumber):
@@ -878,10 +886,11 @@ def checkForAlarms():
                 else:
                     print "Alarm_Active = False"
         # initialize 
-        list = startAlarmStatementDisplay(display)
+        
 
         lastAlarm = state.Alarm_Active
         if (state.Alarm_Active == True):
+                list = startAlarmStatementDisplay(display)
                 activeAlarm = False
                 state.Is_Alarm_MoistureFault = False
                     
@@ -936,6 +945,7 @@ def checkForAlarms():
                     state.Last_Event = "Alarm Active: "+time.strftime("%Y-%m-%d %H:%M:%S")
                     # release display
                 else:
+                    state.Alarm_Active = False
                     print "lastAlarm=", lastAlarm
                     print "activeAlarm=", activeAlarm
                     if (state.Alarm_Last_State != activeAlarm):
