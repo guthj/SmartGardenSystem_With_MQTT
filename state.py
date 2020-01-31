@@ -13,7 +13,13 @@ except ImportError:
 ##################
 # if False, then English
 # if True, then Metric
-EnglishMetric = False 
+EnglishMetric = True 
+
+
+##################
+# Start automatic Watering on Startup
+##################
+WillWater = True
 
 ##################
 # blynk State Variable 
