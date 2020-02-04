@@ -16,7 +16,7 @@ import time
 import threading
 import json
 import pickle
-os.chdir(os.path.dirname(__file__))
+
 import logging; 
 logging.basicConfig(level=logging.ERROR) 
 
@@ -25,7 +25,7 @@ import updateBlynk
 from pubnub.pubnub import PubNub
 from pubnub.pubnub import PNConfiguration
 
-
+os.chdir(os.path.dirname(__file__))
 #appends
 sys.path.append('./SDL_Pi_HDC1000')
 sys.path.append('./SDL_Pi_SSD1306')
@@ -110,14 +110,15 @@ def on_connect(client, userdata, flags, rc):
 
     client.subscribe("/SGS/Plant1/Pump/setOn")
     client.subscribe("/SGS/enableAutomaticWatering/setOn")
-    client.subscribe("/SGS/DisplayToggle/setOn")
+    client.subscribe("/SGS/displayONMode/setOn")
 
 def on_message(client, userdata, msg):
     print(msg.topic+" "+str(msg.payload))
     if msg.topic == "/SGS/Plant1/Pump/setOn":
         if msg.payload == "true":
             client.publish("/SGS/Plant1/Pump/getOn", "true")
-            print "turn on water"
+            print "Turned on water via MQTT"
+            client.publish("/SGS/Log", "Turned on water via MQTT")
             pumpWater(state.LenOf_pumpWater, 1)
         if msg.payload == "false":
             client.publish("/SGS/Plant1/Pump/getOn", "false")
@@ -126,30 +127,26 @@ def on_message(client, userdata, msg):
         if msg.payload == "true":
             client.publish("/SGS/enableAutomaticWatering/getOn", "true")
             state.WillWater = True
-            print "tried turning on, new State: " + str (state.WillWater)
+            print "Tried turning on enableAutomaticWatering, new State: " + str (state.WillWater)
+            client.publish("/SGS/Log", ("Tried turning on enableAutomaticWatering, new State: " + str (state.WillWater)))
         if msg.payload == "false":
             client.publish("/SGS/enableAutomaticWatering/getOn", "false")
             state.WillWater = False
-            print "tried turning off, new State: " + str (state.WillWater)
-    if msg.topic == "/SGS/enableAutomaticWatering/setOn":
+            print "tried turning off enableAutomaticWatering, new State: " + str (state.WillWater)
+            client.publish("/SGS/Log", ("Tried turning off enableAutomaticWatering, new State: " + str (state.WillWater)))
+    if msg.topic == "/SGS/displayONMode/setOn":
         if msg.payload == "true":
-            client.publish("/SGS/enableAutomaticWatering/getOn", "true")
-            state.WillWater = True
-            print "tried turning on, new State: " + str (state.WillWater)
-        if msg.payload == "false":
-            client.publish("/SGS/enableAutomaticWatering/getOn", "false")
-            state.WillWater = False
-            print "tried turning off, new State: " + str (state.WillWater)
-    if msg.topic == "/SGS/DisplayToggle/setOn":
-        if msg.payload == "true":
-            client.publish("/SGS/DisplayToggle/getOn", "true")
+            client.publish("/SGS/displayONMode/getOn", "true")
             state.displayONMode = True
-            print "tried turning on, new State: " + str (state.displayONMode)
+            print "tried turning on displayONMode, new State: " + str (state.displayONMode)
+            client.publish("/SGS/Log", ("Tried turning off displayONMode, new State: " + str (state.displayONMode)))
         if msg.payload == "false":
-            client.publish("/SGS/DisplayToggle/getOn", "false")
+            client.publish("/SGS/displayONMode/getOn", "false")
             state.displayONMode = False
             clearDisplay()
-            print "tried turning off, new State: " + str (state.displayONMode)
+            print "tried turning off displayONMode, new State: " + str (state.displayONMode)
+            client.publish("/SGS/Log", ("Tried turning off DisplayToggle, new State: " + str (state.displayONMode)))
+
         
 def mqtt_startVals():
     if state.WillWater:
@@ -169,7 +166,6 @@ def mqtt_startVals():
     client.publish("/SGS/MotionSensor/Alarm/None", "false")
 
 def mqtt_pushAlarm():  #Runs 1xd to remind if Alarm
-    noAlarms = True
     if state.Alarm_Water:
         client.publish("/SGS/MotionSensor/Alarm/Water", "true")
         time.sleep(3)
@@ -253,6 +249,8 @@ GPIO.output(config.USBEnable, GPIO.LOW)
 def startPump():
         
         print("Pump #1 turned On")
+        client.publish("/SGS/Log", "Pump #1 turned On")
+
         blinkLED(0,Color(0,255,0),1,0.5)
         GPIO.output(config.USBEnable, GPIO.LOW)
         GPIO.output(config.USBControl, GPIO.HIGH)
@@ -260,7 +258,7 @@ def startPump():
 def stopPump():
        
         print("Pump #1 turned Off")
-
+        client.publish("/SGS/Log", "Pump #1 turned Off")
         blinkLED(0,Color(255,0,0),1,0.5)
         GPIO.output(config.USBEnable, GPIO.HIGH)
         GPIO.output(config.USBControl, GPIO.LOW)
@@ -287,6 +285,7 @@ def pumpWater(timeInSeconds, plantNumber):
         client.publish("/SGS/MotionSensor/Watering", "false")
     else:
         print "WillWater false: No Watering"
+        client.publish("/SGS/Log", "WillWater false: No Watering")
     return 1
 
 def forceWaterPlant(plantNumber):
@@ -338,6 +337,7 @@ def waterPlant(plantNumber):
             else:
                 if (config.DEBUG):
                     print "Plant #{:d} pumpWater overruled - Tank Empty".format(plantNumber)
+                    client.publish("/SGS/Log", "Plant #{:d} pumpWater overruled - Tank Empty".format(plantNumber))
                 if (config.USEBLYNK):
                     updateBlynk.blynkTerminalUpdate(time.strftime("%Y-%m-%d %H:%M:%S")+": Plant #{:d} pumpWater overruled - Tank Empty".format(plantNumber)+"\n")
                 state.Last_Event = "NW-Tank Empty at: " + time.strftime("%Y-%m-%d %H:%M:%S")
@@ -426,6 +426,7 @@ percentFull = ultrasonicRanger.returnPercentFull()
 if (percentFull < 0.0):
     if (config.DEBUG):
         print "---->Bad Measurement from Ultrasonic Sensor for Tank Level"
+
     config.UltrasonicLevel_Present = False
 else:
     config.UltrasonicLevel_Present = True
@@ -699,6 +700,7 @@ def checkAndWater():
                         waterPlant(i);
                 else:
                     print "Moisture Level " + str(state.Moisture_Humidity_Array[i-1]) + " sufficient, no Watering needed"
+                    client.publish("/SGS/Log", ("Moisture Level " + str(state.Moisture_Humidity_Array[i-1]) + " sufficient, no Watering needed"))
     
 def forceWaterPlantCheck():
     if ((state.Plant_Water_Request == True) and (state.Plant_Number_Water_Request > 0)):
@@ -849,6 +851,8 @@ def updateState():
                 for i in range(len(state.Moisture_Humidity_Array)):
                     print "/SGS/Plant"+str(i)+"/Moisture:   " + str(int(state.Moisture_Humidity_Array[i]))
                     client.publish(("/SGS/Plant"+str(i)+"/Moisture"), int(state.Moisture_Humidity_Array[i]))
+                    client.publish("/SGS/Log", ("Plant"+str(i)+"/Moisture: " + str(int(state.Moisture_Humidity_Array[i]))))
+
                     
                 state.AirQuality_Sensor_Value =  AirQualitySensorLibrary.readAirQualitySensor(ads1115)
     
@@ -1031,10 +1035,17 @@ def checkForAlarms():
 
                 if (config.DEBUG):
                         print "activeAlarm = ", activeAlarm                
+                client.publish("/SGS/Log", ("Active Alarm?: " + str(activeAlarm)))
                 if (activeAlarm == True):
                     # hold for display
                     displayActiveAlarms()
                     state.Last_Event = "Alarm Active: "+time.strftime("%Y-%m-%d %H:%M:%S")
+                    client.publish("/SGS/Log", ("Active Moisture Alarm?: " + str(state.Is_Alarm_MoistureFault)))
+                    client.publish("/SGS/Log", ("Active Temp Alarm?: " + str(state.Is_Alarm_Temperature)))
+                    client.publish("/SGS/Log", ("Active AirQuality Alarm?: " + str(state.Is_Alarm_AirQuality)))
+                    client.publish("/SGS/Log", ("Active Water Empty Alarm?: " + str(state.Is_Alarm_WaterEmpty)))
+                    
+
                     # release display
                 else:
                     print "Alarm System is active=", lastAlarm
@@ -1329,6 +1340,8 @@ if __name__ == '__main__':
     client.loop_start()
     mqtt_startVals()
     print "MQTT client started"
+    client.publish("/SGS/Log", "MQTT Started")
+    
     scheduler.add_listener(ap_my_listener, apscheduler.events.EVENT_JOB_ERROR)        
 
 
