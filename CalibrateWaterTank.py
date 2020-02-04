@@ -10,6 +10,8 @@ try:
 except ImportError:
     import config
 
+import state
+
 import ultrasonicRanger
 
 print "############################"
@@ -62,15 +64,24 @@ fullaverage = total/10.0
 print "{} {:6.1f} ".format( "calibrated FULL Level=", fullaverage)
 print ""
 
-f = open("TankCalibration","w+")
-
-f.write("{:6.1f}".format(emptyaverage))
-f.write(",")
-f.write("{:6.1f}".format(fullaverage))
-f.close()
+state.Tank_Empty_Level = emptyaverage
+state.Tank_Full_Level = fullaverage
 
 print "############################"
-print "Values written to TankCalibration File"
+print "Values written to state.py file"
 print "############################"
 print "Calibration Complete"
 print "############################"
+
+#f = open("TankCalibration","w+")
+#
+#f.write("{:6.1f}".format(emptyaverage))
+#f.write(",")
+#f.write("{:6.1f}".format(fullaverage))
+#f.close()
+#
+#print "############################"
+#print "Values written to TankCalibration File"
+#print "############################"
+#print "Calibration Complete"
+#print "############################"

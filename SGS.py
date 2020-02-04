@@ -302,7 +302,7 @@ def waterPlant(plantNumber):
                 updateBlynk.blynkStatusUpdate()
             
             if ((state.Tank_Percentage_Full > config.Tank_Pump_Level) or (state.Plant_Water_Request == True)) :
-                pumpWater(2.0, plantNumber)
+                pumpWater(1.0, plantNumber)
                 state.Last_Event = "Plant #{:d} Watered at: ".format(plantNumber)+time.strftime("%Y-%m-%d %H:%M:%S")
                 if (config.USEBLYNK):
                     updateBlynk.blynkTerminalUpdate(time.strftime("%Y-%m-%d %H:%M:%S")+": Plant #{:d} Watered".format(plantNumber)+"\n")

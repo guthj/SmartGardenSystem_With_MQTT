@@ -63,10 +63,10 @@ Pump_Water_Full = False
 # Tank State
 ##################
 
-Tank_Level = 5.0
-Tank_Empty_Level = 10.0
-Tank_Full_Level = 2.0
-Tank_Percentage_Full = 30.0
+Tank_Level = 5.0  #gets set with each measurement
+Tank_Empty_Level = 20.0  #from Calib File Distnace in cm
+Tank_Full_Level = 10.0 #from Calib File Distance in cm
+Tank_Percentage_Full = 30.0 #Gets set with each measurement -> working variable % Full
 
 ##################
 # Temp/Humid sensor
