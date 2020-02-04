@@ -1422,6 +1422,7 @@ if __name__ == '__main__':
             Scroll_SSD1306.addLineOLED(display,  ("   Display saver ON "))
             time.sleep(3.0)
             display.clear()
+            display.display()
         if (config.DEBUG):
              print "Attempt OLEDLock released"
         OLEDLock.release()
