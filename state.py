@@ -51,7 +51,7 @@ for i in range(1, config.moisture_sensor_count+1):
 
 #water below this limit
 
-Moisture_Threshold = 60.0   
+Moisture_Threshold = 70.0    #originally 60
 ##################
 # Pump State
 ##################
@@ -89,10 +89,11 @@ AirQuality_Sensor_Text = ""
 ##################
 Alarm_Temperature = 5.0  
 Alarm_Moisture = 60.0
-Alarm_Water = False
+
 Alarm_Air_Quality = 10000 
 Alarm_Moisture_Sensor_Fault = 15.0
 
+Alarm_Water = True
 Alarm_Active = True
 Alarm_Cancel = False
 
