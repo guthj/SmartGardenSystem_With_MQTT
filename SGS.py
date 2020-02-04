@@ -302,7 +302,7 @@ def waterPlant(plantNumber):
                 updateBlynk.blynkStatusUpdate()
             
             if ((state.Tank_Percentage_Full > config.Tank_Pump_Level) or (state.Plant_Water_Request == True)) :
-                pumpWater(1.0, plantNumber)
+                pumpWater(4.0, plantNumber)
                 state.Last_Event = "Plant #{:d} Watered at: ".format(plantNumber)+time.strftime("%Y-%m-%d %H:%M:%S")
                 if (config.USEBLYNK):
                     updateBlynk.blynkTerminalUpdate(time.strftime("%Y-%m-%d %H:%M:%S")+": Plant #{:d} Watered".format(plantNumber)+"\n")
@@ -1298,18 +1298,19 @@ if __name__ == '__main__':
     scheduler.add_job(blinkLED, 'interval', seconds=5, args=[0,Color(0,0,255),1,0.250])
     
     # blink life light
-    scheduler.add_job(pixelDriver.statusLEDs, 'interval', seconds=15, args=[strip, PixelLock])
+    scheduler.add_job(pixelDriver.statusLEDs, 'interval', seconds=20, args=[strip, PixelLock])
 
 
     # update device state
-    scheduler.add_job(updateState, 'interval', seconds=10)
+    scheduler.add_job(updateState, 'interval', seconds=25)
 
     # check for force water - note the interval difference with updateState
-    scheduler.add_job(forceWaterPlantCheck, 'interval', seconds=8)
+    if (config.USEBLYNK):
+        scheduler.add_job(forceWaterPlantCheck, 'interval', seconds=8)
     
 
     # check for alarms
-    scheduler.add_job(checkForAlarms, 'interval', seconds=15)
+    scheduler.add_job(checkForAlarms, 'interval', seconds=300)
     #scheduler.add_job(checkForAlarms, 'interval', seconds=300)
 
 
@@ -1320,7 +1321,7 @@ if __name__ == '__main__':
     #scheduler.add_job(updateBlynk.blynkStateUpdate, 'interval', seconds=60)
 
     # check and water  
-    scheduler.add_job(checkAndWater, 'interval', minutes=15)
+    scheduler.add_job(checkAndWater, 'interval', minutes=30)
 
         
     # save state to pickle file 
