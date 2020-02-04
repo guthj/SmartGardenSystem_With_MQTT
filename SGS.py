@@ -16,7 +16,7 @@ import time
 import threading
 import json
 import pickle
-
+os.chdir(os.path.dirname(__file__))
 import logging; 
 logging.basicConfig(level=logging.ERROR) 
 
