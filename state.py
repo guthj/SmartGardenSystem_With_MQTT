@@ -68,6 +68,8 @@ Tank_Empty_Level = 20.0  #from Calib File Distnace in cm
 Tank_Full_Level = 10.0 #from Calib File Distance in cm
 Tank_Percentage_Full = 30.0 #Gets set with each measurement -> working variable % Full
 
+LenOf_pumpWater = 8
+
 ##################
 # Temp/Humid sensor
 ##################
@@ -87,7 +89,7 @@ AirQuality_Sensor_Text = ""
 ##################
 # Alarm States
 ##################
-Alarm_Temperature = 5.0  
+Alarm_Temperature = 15.0  
 Alarm_Moisture = 60.0
 
 Alarm_Air_Quality = 10000 
