@@ -110,6 +110,7 @@ def on_connect(client, userdata, flags, rc):
 
     client.subscribe("/SGS/Plant1/Pump/setOn")
     client.subscribe("/SGS/enableAutomaticWatering/setOn")
+    client.subscribe("/SGS/DisplayToggle/setOn")
 
 def on_message(client, userdata, msg):
     print(msg.topic+" "+str(msg.payload))
@@ -130,6 +131,25 @@ def on_message(client, userdata, msg):
             client.publish("/SGS/enableAutomaticWatering/getOn", "false")
             state.WillWater = False
             print "tried turning off, new State: " + str (state.WillWater)
+    if msg.topic == "/SGS/enableAutomaticWatering/setOn":
+        if msg.payload == "true":
+            client.publish("/SGS/enableAutomaticWatering/getOn", "true")
+            state.WillWater = True
+            print "tried turning on, new State: " + str (state.WillWater)
+        if msg.payload == "false":
+            client.publish("/SGS/enableAutomaticWatering/getOn", "false")
+            state.WillWater = False
+            print "tried turning off, new State: " + str (state.WillWater)
+    if msg.topic == "/SGS/DisplayToggle/setOn":
+        if msg.payload == "true":
+            client.publish("/SGS/DisplayToggle/getOn", "true")
+            state.displayONMode = True
+            print "tried turning on, new State: " + str (state.displayONMode)
+        if msg.payload == "false":
+            client.publish("/SGS/DisplayToggle/getOn", "false")
+            state.displayONMode = False
+            clearDisplay()
+            print "tried turning off, new State: " + str (state.displayONMode)
         
 def mqtt_startVals():
     if state.WillWater:
@@ -138,6 +158,26 @@ def mqtt_startVals():
         client.publish("/SGS/enableAutomaticWatering/getOn", "false")
         
     client.publish("/SGS/Plant1/Pump/getOn", "false")
+    if state.displayONMode:
+        client.publish("/SGS/DisplayToggle/getOn", "true")
+    else:
+        client.publish("/SGS/DisplayToggle/getOn", "false")
+    
+    
+def clearDisplay():
+    tryAgain = True
+    while tryAgain:
+            if ((config.OLED_Present == True) and (state.SGS_State == state.SGS_States.Monitor)):
+                tryAgain = False
+                if (config.DEBUG):
+                      print "Attempt OLEDLock acquired"
+                OLEDLock.acquire()
+                if (config.DEBUG):
+                      print "OLEDLock acquired"
+                display.clear()
+                display.display()
+                
+                OLEDLock.release()
 ################
 # Update State Lock - keeps smapling from being interrupted (like by checkAndWater)
 ################
@@ -821,8 +861,7 @@ def updateState():
                 updateBlynk.blynkStatusUpdate()
           
 
-            if (config.OLED_Present) and (state.SGS_State == state.SGS_States.Monitor) :
-
+            if (config.OLED_Present) and (state.SGS_State == state.SGS_States.Monitor) and (state.displayONMode == True) :
 
                     if (config.DEBUG):
                           print "Attempt OLEDLock acquired"
@@ -886,7 +925,7 @@ def updateState():
 # Alarm Displays 
 #############################
 def checkForAlarms():
-
+    
         # check to see alarm
         if (config.DEBUG):
                 print "checking for alarm"
@@ -899,7 +938,7 @@ def checkForAlarms():
 
         lastAlarm = state.Alarm_Active
         if (state.Alarm_Active == True):
-                list = startAlarmStatementDisplay(display)
+                #list = startAlarmStatementDisplay(display)
                 activeAlarm = False
                 state.Is_Alarm_MoistureFault = False
                     
@@ -907,7 +946,7 @@ def checkForAlarms():
                     if (state.Moisture_Humidity_Array[i] <= state.Alarm_Moisture_Sensor_Fault):
                         if (config.DEBUG):
                             print "Plant #{:d}---->Moisture Sensor Fault".format(i+1)
-                        displayAlarmOLEDDisplay(list, "#{:d}MS FLT!".format(i), 10)
+                        #displayAlarmOLEDDisplay(list, "#{:d}MS FLT!".format(i), 10)
                         state.Is_Alarm_MoistureFault = True
                 
                 
@@ -954,14 +993,13 @@ def checkForAlarms():
                     state.Last_Event = "Alarm Active: "+time.strftime("%Y-%m-%d %H:%M:%S")
                     # release display
                 else:
-                    state.Alarm_Active = False
-                    print "lastAlarm=", lastAlarm
+                    print "Alarm System is active=", lastAlarm
                     print "activeAlarm=", activeAlarm
                     if (state.Alarm_Last_State != activeAlarm):
                         state.Last_Event = "Alarm Ended: "+time.strftime("%Y-%m-%d %H:%M:%S")
                     else:
                         state.Last_Event = "SGS Running: "+time.strftime("%Y-%m-%d %H:%M:%S")
-               
+                state.Alarm_Last_State = activeAlarm
                 if (config.USEPUBNUB):
                     publishEventToPubNub()
                 if (config.USEBLYNK):
@@ -971,6 +1009,9 @@ def checkForAlarms():
                     publishAlarmToPubNub("")
                 if (config.USEBLYNK):
                     updateBlynk.blynkAlarmUpdate()    
+                    
+                
+                
 
 
 def centerText(text,sizeofline):
@@ -1087,26 +1128,26 @@ def displayActiveAlarms():
                             print "Plant #{:d}---->Moisture Sensor Fault".format(i+1)
                         displayAlarmOLEDDisplay(list, "#{:d}MS FLT!".format(i), 10)
                         state.Is_Alarm_MoistureFault = True
-                        time.sleep(0.25)
+                        time.sleep(1)
 
                 if (state.Alarm_Temperature >= state.Temperature):
                         if (config.DEBUG):
                                 print "---->Temperature Alarm!"
                         displayAlarmOLEDDisplay(list, "Low Temp", 10)
-                        time.sleep(0.25)
+                        time.sleep(1)
 
                 if (state.Alarm_Moisture >= state.Moisture_Humidity):
                         displayAlarmOLEDDisplay(list, "Plant Dry", 14)
-                        time.sleep(0.25)
+                        time.sleep(1)
 
                 if (state.Alarm_Water  == True ):
                         if (state.Pump_Water_Full == False):
                                 displayAlarmOLEDDisplay(list, "No Water", 12)
-                                time.sleep(0.25)
+                                time.sleep(1)
 
                 if (state.Alarm_Air_Quality <  state.AirQuality_Sensor_Value):
                         displayAlarmOLEDDisplay(list, "Air Quality", 14)
-                        time.sleep(0.25)
+                        time.sleep(1)
 
 
                 finishAlarmStatementDisplay(list)
@@ -1126,7 +1167,9 @@ def displayActiveAlarms():
 
                 if (config.USEPUBNUB):
                     publishStatusToPubNub()
-
+                
+                if state.displayONMode == False:
+                    display.clear()
                 if (config.DEBUG):
                     print "Attempt OLEDLock released"
                 OLEDLock.release()

@@ -117,6 +117,10 @@ def statusLEDs(strip, PixelLock):
     
             time.sleep(0.2)
             strip.show()
+        # IF there is an alarm do rainbow
+        if state.Alarm_Last_State:
+            rainbow(strip = strip,iterations = 10)
+        
         setWaterLevel(strip, PixelLock)
         time.sleep(2.0)
 

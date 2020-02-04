@@ -120,6 +120,8 @@ runLEDs = True
 
 showDryness = False
 
+displayONMode = False
+
 # plant water requests
 
 #-1 means no plant request
