@@ -118,7 +118,7 @@ def on_message(client, userdata, msg):
         if msg.payload == "true":
             client.publish("/SGS/Plant1/Pump/getOn", "true")
             print "turn on water"
-            pumpWater(1, 1)
+            pumpWater(state.LenOf_pumpWater, 1)
         if msg.payload == "false":
             client.publish("/SGS/Plant1/Pump/getOn", "false")
             stopPump()
@@ -162,6 +162,9 @@ def mqtt_startVals():
         client.publish("/SGS/DisplayToggle/getOn", "true")
     else:
         client.publish("/SGS/DisplayToggle/getOn", "false")
+    client.publish("/SGS/MotionSensor/Alarm", "false")
+    client.publish("/SGS/MotionSensor/Watering", "false")
+    
     
     
 def clearDisplay():
@@ -245,6 +248,7 @@ def pumpWater(timeInSeconds, plantNumber):
     if state.WillWater:
         if (timeInSeconds <= 0.0):
             return 0.0
+        client.publish("/SGS/MotionSensor/Watering", "true")
         if (plantNumber == 1):
             startPump()
         else:
@@ -258,6 +262,7 @@ def pumpWater(timeInSeconds, plantNumber):
             stopPump()
         else:
             extendedPlants.turnOffExtendedPump(plantNumber, GDE_Ext1, GDE_Ext2)
+        client.publish("/SGS/MotionSensor/Watering", "false")
     return 1
 
 def forceWaterPlant(plantNumber):
@@ -302,7 +307,7 @@ def waterPlant(plantNumber):
                 updateBlynk.blynkStatusUpdate()
             
             if ((state.Tank_Percentage_Full > config.Tank_Pump_Level) or (state.Plant_Water_Request == True)) :
-                pumpWater(4.0, plantNumber)
+                pumpWater(state.LenOf_pumpWater, plantNumber)
                 state.Last_Event = "Plant #{:d} Watered at: ".format(plantNumber)+time.strftime("%Y-%m-%d %H:%M:%S")
                 if (config.USEBLYNK):
                     updateBlynk.blynkTerminalUpdate(time.strftime("%Y-%m-%d %H:%M:%S")+": Plant #{:d} Watered".format(plantNumber)+"\n")
