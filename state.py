@@ -93,7 +93,7 @@ Alarm_Water = False
 Alarm_Air_Quality = 10000 
 Alarm_Moisture_Sensor_Fault = 15.0
 
-Alarm_Active = False
+Alarm_Active = True
 Alarm_Cancel = False
 
 Alarm_Last_State = False
