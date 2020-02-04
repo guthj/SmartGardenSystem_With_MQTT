@@ -873,7 +873,7 @@ def updateState():
                 # leave the previous value
             else:
                 state.Tank_Percentage_Full = percentFull
-            client.publish("/SGS/Reservoir/Percentage", state.Tank_Percentage_Full)
+            client.publish("/SGS/Reservoir/Percentage", int(state.Tank_Percentage_Full))
             
             if (state.Tank_Percentage_Full > config.Tank_Pump_Level):
                 state.Pump_Water_Full = True
