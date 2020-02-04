@@ -106,6 +106,11 @@ Is_Alarm_MoistureFault = False
 Is_Alarm_AirQuality = False
 Is_Alarm_WaterEmpty = False
 
+NotifiedAboutTemp = False
+NotifiedAboutAQ = False
+
+
+
 ##################
 # Internal States
 ##################

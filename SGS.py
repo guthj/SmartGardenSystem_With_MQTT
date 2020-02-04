@@ -157,15 +157,37 @@ def mqtt_startVals():
     else:
         client.publish("/SGS/enableAutomaticWatering/getOn", "false")
         
-    client.publish("/SGS/Plant1/Pump/getOn", "false")
     if state.displayONMode:
         client.publish("/SGS/DisplayToggle/getOn", "true")
     else:
         client.publish("/SGS/DisplayToggle/getOn", "false")
+    
+    client.publish("/SGS/Plant1/Pump/getOn", "false")
     client.publish("/SGS/MotionSensor/Alarm", "false")
     client.publish("/SGS/MotionSensor/Watering", "false")
+    client.publish("/SGS/MotionSensor/Alarm/Moisture", "false")
+    client.publish("/SGS/MotionSensor/Alarm/None", "false")
+
+def mqtt_pushAlarm():  #Runs 1xd to remind if Alarm
+    noAlarms = True
+    if state.Alarm_Water:
+        client.publish("/SGS/MotionSensor/Alarm/Water", "true")
+        time.sleep(3)
+        client.publish("/SGS/MotionSensor/Alarm/Water", "false")
+    if state.Alarm_Moisture:
+        client.publish("/SGS/MotionSensor/Alarm/Moisture", "true")
+        time.sleep(3)
+        client.publish("/SGS/MotionSensor/Alarm/Moisture", "false")
+    if state.Alarm_Last_State:
+        client.publish("/SGS/MotionSensor/Alarm/None", "true")
+        time.sleep(3)
+        client.publish("/SGS/MotionSensor/Alarm/None", "false")
+    ## AQ and Temp is Volitile: Notify as soon as abaration found.
+    ## Notify only once per day
+    state.NotifiedAboutAQ = False
+    state.NotifiedAboutTemp = False
     
-    
+
     
 def clearDisplay():
     tryAgain = True
@@ -263,6 +285,8 @@ def pumpWater(timeInSeconds, plantNumber):
         else:
             extendedPlants.turnOffExtendedPump(plantNumber, GDE_Ext1, GDE_Ext2)
         client.publish("/SGS/MotionSensor/Watering", "false")
+    else:
+        print "WillWater false: No Watering"
     return 1
 
 def forceWaterPlant(plantNumber):
@@ -673,6 +697,8 @@ def checkAndWater():
                         if (config.DEBUG):
                                 print "Attempting to Watering Plant"
                         waterPlant(i);
+                else:
+                    print "Moisture Level " + str(state.Moisture_Humidity_Array[i-1]) + " sufficient, no Watering needed"
     
 def forceWaterPlantCheck():
     if ((state.Plant_Water_Request == True) and (state.Plant_Number_Water_Request > 0)):
@@ -964,6 +990,11 @@ def checkForAlarms():
                         print "state.AirQuality_Sensor_Value", state.AirQuality_Sensor_Value
                     state.Is_Alarm_AirQuality = True
                     activeAlarm = True
+                    if state.NotifiedAboutAQ == False:
+                        client.publish("/SGS/MotionSensor/Alarm/AQ", "true")
+                        time.sleep(3)
+                        client.publish("/SGS/MotionSensor/Alarm/AQ", "false")
+                        state.NotifiedAboutAQ = True
                 else:
                     state.Is_Alarm_AirQuality = False
 
@@ -972,6 +1003,11 @@ def checkForAlarms():
                         print "---->Low Temperature Alarm!"
                     activeAlarm = True
                     state.Is_Alarm_Temperature = True
+                    if state.NotifiedAboutTemp == False:
+                        client.publish("/SGS/MotionSensor/Alarm/AQ", "true")
+                        time.sleep(3)
+                        client.publish("/SGS/MotionSensor/Alarm/AQ", "false")
+                        state.NotifiedAboutTemp = True
                 else:
                     state.Is_Alarm_Temperature = False
 
@@ -1327,6 +1363,8 @@ if __name__ == '__main__':
 
     # check and water  
     scheduler.add_job(checkAndWater, 'interval', minutes=30)
+    
+    scheduler.add_job(mqtt_pushAlarm, 'cron', hour=18, minute=0, second=0)
 
         
     # save state to pickle file 
