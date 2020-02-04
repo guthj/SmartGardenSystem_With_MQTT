@@ -119,7 +119,7 @@ def statusLEDs(strip, PixelLock):
             strip.show()
         # IF there is an alarm do rainbow
         if state.Alarm_Last_State:
-            rainbow(strip = strip,iterations = 10)
+            rainbow(strip = strip,iterations = 1)
         
         setWaterLevel(strip, PixelLock)
         time.sleep(2.0)
@@ -208,8 +208,9 @@ def setWaterLevel(strip,  PixelLock):
 
     """ uses 7 top pixels   """
     #  all 7 green until under 1/7 of level, step by 1/7 - then all black except for 1 - RED
-
-
+    if state.Alarm_Last_State:
+        for i in range(8):
+            strip.setPixelColor(i,Color(0,0,0))
 
     count = int (state.Tank_Percentage_Full/14.0)
 
