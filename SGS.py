@@ -1367,6 +1367,17 @@ if __name__ == '__main__':
 
         Scroll_SSD1306.addLineOLED(display,  ("    Welcome to "))
         Scroll_SSD1306.addLineOLED(display,  ("   Smart Garden "))
+        
+        time.sleep(3.0)
+        
+        if state.displayONMode == False:
+            display.clear()
+            Scroll_SSD1306.addLineOLED(display,  ("   Turning Display "))
+            Scroll_SSD1306.addLineOLED(display,  ("   off now "))
+            Scroll_SSD1306.addLineOLED(display,  ("    "))
+            Scroll_SSD1306.addLineOLED(display,  ("   Display saver ON "))
+            time.sleep(3.0)
+            display.clear()
         if (config.DEBUG):
              print "Attempt OLEDLock released"
         OLEDLock.release()
