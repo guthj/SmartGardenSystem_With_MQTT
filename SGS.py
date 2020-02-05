@@ -1081,8 +1081,8 @@ def checkForAlarms():
                     # hold for display
                     displayActiveAlarms()
                     state.Last_Event = "Alarm Active: "+time.strftime("%Y-%m-%d %H:%M:%S")
-                    client.publish("/SGS/Log", ("Moisture Sensor Error Alarm?: " + str(state.Alarm_Moisture_Sensor_Fault)))
-                    client.publish("/SGS/Log", ("Active Moisture Alarm?: " + str(state.Is_Alarm_MoistureFault)))
+                    client.publish("/SGS/Log", ("Moisture Sensor Error Alarm?: " + str(state.Is_Alarm_MoistureFault)))
+                    client.publish("/SGS/Log", ("Active Moisture Alarm?: " + str(state.Is_Alarm_Moisture)))
                     client.publish("/SGS/Log", ("Active Temp Alarm?: " + str(state.Is_Alarm_Temperature)))
                     client.publish("/SGS/Log", ("Active AirQuality Alarm?: " + str(state.Is_Alarm_AirQuality)))
                     client.publish("/SGS/Log", ("Active Water Empty Alarm?: " + str(state.Is_Alarm_WaterEmpty)))
