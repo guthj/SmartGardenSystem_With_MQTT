@@ -111,6 +111,7 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("/SGS/Plant1/Pump/setOn")
     client.subscribe("/SGS/enableAutomaticWatering/setOn")
     client.subscribe("/SGS/displayONMode/setOn")
+    client.subscribe("/SGS/runLEDs/setOn")
 
 def on_message(client, userdata, msg):
     print(msg.topic+" "+str(msg.payload))
@@ -126,38 +127,56 @@ def on_message(client, userdata, msg):
     if msg.topic == "/SGS/enableAutomaticWatering/setOn":
         if msg.payload == "true":
             client.publish("/SGS/enableAutomaticWatering/getOn", "true")
-            state.WillWater = True
-            print "Tried turning on enableAutomaticWatering, new State: " + str (state.WillWater)
-            client.publish("/SGS/Log", ("Tried turning on enableAutomaticWatering, new State: " + str (state.WillWater)))
+            state.enableAutomaticWatering = True
+            print "Tried turning on enableAutomaticWatering, new State: " + str (state.enableAutomaticWatering)
+            client.publish("/SGS/Log", ("Tried turning on enableAutomaticWatering, new State: " + str (state.enableAutomaticWatering)))
         if msg.payload == "false":
             client.publish("/SGS/enableAutomaticWatering/getOn", "false")
-            state.WillWater = False
-            print "tried turning off enableAutomaticWatering, new State: " + str (state.WillWater)
-            client.publish("/SGS/Log", ("Tried turning off enableAutomaticWatering, new State: " + str (state.WillWater)))
+            state.enableAutomaticWatering = False
+            print "tried turning off enableAutomaticWatering, new State: " + str (state.enableAutomaticWatering)
+            client.publish("/SGS/Log", ("Tried turning off enableAutomaticWatering, new State: " + str (state.enableAutomaticWatering)))
     if msg.topic == "/SGS/displayONMode/setOn":
         if msg.payload == "true":
             client.publish("/SGS/displayONMode/getOn", "true")
             state.displayONMode = True
             print "tried turning on displayONMode, new State: " + str (state.displayONMode)
-            client.publish("/SGS/Log", ("Tried turning off displayONMode, new State: " + str (state.displayONMode)))
+            client.publish("/SGS/Log", ("Tried turning on displayONMode, new State: " + str (state.displayONMode)))
         if msg.payload == "false":
             client.publish("/SGS/displayONMode/getOn", "false")
             state.displayONMode = False
             clearDisplay()
             print "tried turning off displayONMode, new State: " + str (state.displayONMode)
             client.publish("/SGS/Log", ("Tried turning off DisplayToggle, new State: " + str (state.displayONMode)))
+    if msg.topic == "/SGS/runLEDs/setOn":
+        if msg.payload == "true":
+            client.publish("/SGS/runLEDs/getOn", "true")
+            state.runLEDs = True
+            print "tried turning on runLEDs, new State: " + str (state.runLEDs)
+            client.publish("/SGS/Log", ("Tried turning off runLEDs, new State: " + str (state.runLEDs)))
+        if msg.payload == "false":
+            client.publish("/SGS/runLEDs/getOn", "false")
+            state.runLEDs = False
+            clearLEDs()
+            print "tried turning off runLEDs, new State: " + str (state.runLEDs)
+            client.publish("/SGS/Log", ("Tried turning off runLEDs, new State: " + str (state.runLEDs)))
 
         
 def mqtt_startVals():
-    if state.WillWater:
+    if state.enableAutomaticWatering:
         client.publish("/SGS/enableAutomaticWatering/getOn", "true")
     else:
         client.publish("/SGS/enableAutomaticWatering/getOn", "false")
-        
+
     if state.displayONMode:
         client.publish("/SGS/DisplayToggle/getOn", "true")
     else:
         client.publish("/SGS/DisplayToggle/getOn", "false")
+
+    if state.runLEDs:
+        client.publish("/SGS/runLEDs/getOn", "true")
+    else:
+        client.publish("/SGS/runLEDs/getOn", "false")
+    
     
     client.publish("/SGS/Plant1/Pump/getOn", "false")
     client.publish("/SGS/MotionSensor/Alarm", "false")
@@ -183,7 +202,26 @@ def mqtt_pushAlarm():  #Runs 1xd to remind if Alarm
     state.NotifiedAboutAQ = False
     state.NotifiedAboutTemp = False
     
-
+def clearLEDs():
+    tryAgain = True
+    while tryAgain:
+        try:
+            PixelLock.acquire()
+            strip.setPixelColor(7,Color(0,0,0))
+            strip.setPixelColor(6,Color(0,0,0))
+            strip.setPixelColor(5,Color(0,0,0))
+            strip.setPixelColor(4,Color(0,0,0))
+            strip.setPixelColor(3,Color(0,0,0))
+            strip.setPixelColor(2,Color(0,0,0))
+            strip.setPixelColor(1,Color(0,0,0))
+            strip.setPixelColor(0,Color(0,0,0))
+            strip.show()
+            tryAgain = False
+        except:
+            time.sleep(2)
+    PixelLock.release()
+    
+    
     
 def clearDisplay():
     tryAgain = True
@@ -265,7 +303,7 @@ def stopPump():
         client.publish("/SGS/Plant1/Pump/getOn", "false")
 
 def pumpWater(timeInSeconds, plantNumber):
-    if state.WillWater:
+    if state.enableAutomaticWatering:
         if (timeInSeconds <= 0.0):
             return 0.0
         client.publish("/SGS/MotionSensor/Watering", "true")
@@ -284,8 +322,8 @@ def pumpWater(timeInSeconds, plantNumber):
             extendedPlants.turnOffExtendedPump(plantNumber, GDE_Ext1, GDE_Ext2)
         client.publish("/SGS/MotionSensor/Watering", "false")
     else:
-        print "WillWater false: No Watering"
-        client.publish("/SGS/Log", "WillWater false: No Watering")
+        print "enableAutomaticWatering false: No Watering"
+        client.publish("/SGS/Log", "enableAutomaticWatering false: No Watering")
     return 1
 
 def forceWaterPlant(plantNumber):
@@ -313,6 +351,7 @@ def forceWaterPlant(plantNumber):
 
 def waterPlant(plantNumber):
             # We want to put off this state if Update State is .is locked.   That will prevent Update State from being hosed by this state machine
+            client.publish("/SGS/Log", "Try Watering")
             if (config.DEBUG):
                   print "WP-Attempt Aquire"
             UpdateStateLock.acquire()
@@ -320,7 +359,7 @@ def waterPlant(plantNumber):
                   print "WP-UpdateStateLock acquired"
 
 
-
+    
             previousState = state.SGS_State;
             #if(state.SGS_State == state.SGS_States.Monitor):
             state.SGS_State =state.SGS_States.Watering
@@ -330,6 +369,7 @@ def waterPlant(plantNumber):
                 updateBlynk.blynkStatusUpdate()
             
             if ((state.Tank_Percentage_Full > config.Tank_Pump_Level) or (state.Plant_Water_Request == True)) :
+                client.publish("/SGS/Log", "Water Reservoir at" + str(state.Tank_Percentage_Full) + "! Irrigating... ")
                 pumpWater(state.LenOf_pumpWater, plantNumber)
                 state.Last_Event = "Plant #{:d} Watered at: ".format(plantNumber)+time.strftime("%Y-%m-%d %H:%M:%S")
                 if (config.USEBLYNK):
@@ -341,6 +381,7 @@ def waterPlant(plantNumber):
                 if (config.USEBLYNK):
                     updateBlynk.blynkTerminalUpdate(time.strftime("%Y-%m-%d %H:%M:%S")+": Plant #{:d} pumpWater overruled - Tank Empty".format(plantNumber)+"\n")
                 state.Last_Event = "NW-Tank Empty at: " + time.strftime("%Y-%m-%d %H:%M:%S")
+                client.publish("/SGS/Log", "Couldn't: Water Reservoir Empty")
            
             if (config.USEBLYNK):
                 updateBlynk.blynkEventUpdate()
@@ -686,13 +727,13 @@ def killLogger():
 
 
 def checkAndWater():
-
-
+    client.publish("/SGS/Log", "Running checkAndWater")
     for i in range(1, config.plant_number+1):
         if (config.DEBUG):
             print "checkandWater: Plant#%i %0.2f Threshold / %0.2f Current" % (i,state.Moisture_Threshold, state.Moisture_Humidity_Array[i-1])
         if (state.Moisture_Humidity_Array[i-1] <= state.Alarm_Moisture_Sensor_Fault):
               print "No Watering Plant #%i - Moisture Sensor Fault Detected!"        % (i)        
+              client.publish("/SGS/Log", "Moisture Sensor Fault Detected!")
         else:
                 if (state.Moisture_Threshold > state.Moisture_Humidity_Array[i-1]):
                         if (config.DEBUG):
@@ -1008,9 +1049,9 @@ def checkForAlarms():
                     activeAlarm = True
                     state.Is_Alarm_Temperature = True
                     if state.NotifiedAboutTemp == False:
-                        client.publish("/SGS/MotionSensor/Alarm/AQ", "true")
+                        client.publish("/SGS/MotionSensor/Alarm/Temp", "true")
                         time.sleep(3)
-                        client.publish("/SGS/MotionSensor/Alarm/AQ", "false")
+                        client.publish("/SGS/MotionSensor/Alarm/Temp", "false")
                         state.NotifiedAboutTemp = True
                 else:
                     state.Is_Alarm_Temperature = False
@@ -1040,6 +1081,7 @@ def checkForAlarms():
                     # hold for display
                     displayActiveAlarms()
                     state.Last_Event = "Alarm Active: "+time.strftime("%Y-%m-%d %H:%M:%S")
+                    client.publish("/SGS/Log", ("Moisture Sensor Error Alarm?: " + str(state.Alarm_Moisture_Sensor_Fault)))
                     client.publish("/SGS/Log", ("Active Moisture Alarm?: " + str(state.Is_Alarm_MoistureFault)))
                     client.publish("/SGS/Log", ("Active Temp Alarm?: " + str(state.Is_Alarm_Temperature)))
                     client.publish("/SGS/Log", ("Active AirQuality Alarm?: " + str(state.Is_Alarm_AirQuality)))
@@ -1356,7 +1398,7 @@ if __name__ == '__main__':
 
 
     # update device state
-    scheduler.add_job(updateState, 'interval', seconds=25)
+    scheduler.add_job(updateState, 'interval', seconds=55)
 
     # check for force water - note the interval difference with updateState
     if (config.USEBLYNK):
@@ -1375,7 +1417,7 @@ if __name__ == '__main__':
     #scheduler.add_job(updateBlynk.blynkStateUpdate, 'interval', seconds=60)
 
     # check and water  
-    scheduler.add_job(checkAndWater, 'interval', minutes=30)
+    scheduler.add_job(checkAndWater, 'interval', minutes=12)
     
     scheduler.add_job(mqtt_pushAlarm, 'cron', hour=18, minute=0, second=0)
 

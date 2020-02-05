@@ -19,7 +19,7 @@ EnglishMetric = True
 ##################
 # Start automatic Watering on Startup
 ##################
-WillWater = True
+enableAutomaticWatering = True
 
 ##################
 # blynk State Variable 
@@ -124,11 +124,14 @@ runRainbow = False
 
 runLEDs = True
 
-# show dryness indicator every 15s
-
-showDryness = False
+# turn OLED display on/off
 
 displayONMode = False
+
+# show dryness indicator every 15s
+showDryness = False
+
+
 
 # plant water requests
 
