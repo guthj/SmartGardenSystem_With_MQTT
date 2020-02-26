@@ -109,8 +109,11 @@ Is_Alarm_WaterEmpty = False
 NotifiedAboutTemp = False
 NotifiedAboutAQ = False
 
-
-
+useSerialMoisture = True
+plantMsDic = {
+        0:[0,1]
+            }
+serialCorrector = 20
 ##################
 # Internal States
 ##################

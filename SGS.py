@@ -81,16 +81,21 @@ import state
 
 import extendedPlants
 
+
+#############
+# imports for serial reading
+#############
+import serial
+
+
 #############
 # Debug True or False
 ############
 
 DEBUG = True
 
-#############
-# Watering Enabled True or False
-############
-import serial
+
+
 
 
 #initialization
@@ -108,6 +113,7 @@ def on_connect(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
     if rc == 0:
         print("-> This means we connected successfully")
+        client.publish("SGS/Log", "Connection to server successfull")
     else:
         print("Major connection error")
         raise SystemExit
@@ -115,21 +121,21 @@ def on_connect(client, userdata, flags, rc):
     # Subscribing in on_connect() means that if we lose the connection and
     # reconnect then subscriptions will be renewed.
 
-    client.subscribe("SGS/Plant1/Pump/setOn")
+    client.subscribe("SGS/Plant0/Pump/setOn")
     client.subscribe("SGS/enableAutomaticWatering/setOn")
     client.subscribe("SGS/displayONMode/setOn")
     client.subscribe("SGS/runLEDs/setOn")
 
 def on_message(client, userdata, msg):
     print(msg.topic+" "+str(msg.payload))
-    if msg.topic == "SGS/Plant1/Pump/setOn":
+    if msg.topic == "SGS/Plant0/Pump/setOn":
         if msg.payload == "true":
-            client.publish("SGS/Plant1/Pump/getOn", "true")
+            client.publish("SGS/Plant0/Pump/getOn", "true")
             print "Turned on water via MQTT"
             client.publish("SGS/Log", "Turned on water via MQTT")
             pumpWater(state.LenOf_pumpWater, 1)
         if msg.payload == "false":
-            client.publish("SGS/Plant1/Pump/getOn", "false")
+            client.publish("SGS/Plant0/Pump/getOn", "false")
             stopPump()
     if msg.topic == "SGS/enableAutomaticWatering/setOn":
         if msg.payload == "true":
@@ -185,7 +191,7 @@ def mqtt_startVals():
         client.publish("SGS/runLEDs/getOn", "false")
     
     
-    client.publish("SGS/Plant1/Pump/getOn", "false")
+    client.publish("SGS/Plant0/Pump/getOn", "false")
     client.publish("SGS/MotionSensor/Alarm", "false")
     client.publish("SGS/MotionSensor/Watering", "false")
     client.publish("SGS/MotionSensor/Alarm/Moisture", "false")
@@ -282,16 +288,25 @@ def blinkLED(pixel, color, times, length):
 
         PixelLock.release()
 
-def readMoisture():
+
+
+def readMoistureSerial(devNum):
     hasRead = False
-    with serial.Serial('/dev/ttyS1', 19200, timeout=1) as ser:
-        line = ser.readline()
-        hasRead = True
+    try:
+        with serial.Serial('/dev/ttyACM'+str(devNum), 115200, timeout=2) as ser:
+            line = ser.readline()
+            hasRead = True
     
-    if hasRead:
-        print(line)
-    else:
-        print("No input")
+        if hasRead:
+            print(line)
+            a = line.split(",")
+            return  [float(a[2]),float(a[3])]
+        else:
+            print("No input")
+            return [-1,-1]
+    except:
+        print("Sensor "+str(devNum)+" not connected")
+        return [-2,-2]
     
 ###############
 # pump setup
@@ -316,7 +331,7 @@ def stopPump():
         blinkLED(0,Color(255,0,0),1,0.5)
         GPIO.output(config.USBEnable, GPIO.HIGH)
         GPIO.output(config.USBControl, GPIO.LOW)
-        client.publish("SGS/Plant1/Pump/getOn", "false")
+        client.publish("SGS/Plant0/Pump/getOn", "false")
 
 def pumpWater(timeInSeconds, plantNumber):
 
@@ -896,9 +911,37 @@ def updateState():
                             print 'Sunlight UV Index (RAW): ' + str(state.Sunlight_UV)
                             print 'Sunlight UV Index: ' + str(state.Sunlight_UVIndex)
                     ################
+            useBackupMoisture=True
+            if state.useSerialMoisture:
+                useBackupMoisture=False
+                for i in state.plantMsDic:
+                    msArray = state.plantMsDic[i]
+                    averageMoisture=0
+                    averageTemp=0
+                    sensorDataM=[]
+                    sensorDataT=[]
+                    for i2 in range(len(msArray)):
+        
+                        sensorArray = readMoistureSerial(devNum = msArray[i2])
+                        if sensorArray[1] >= 0:
+                            sensorDataM.append(sensorArray[1])
+                            sensorDataT.append(sensorArray[0])
+                            print("S"+ str(msArray[i2]) + ": Temperature: " + str(sensorArray[0]) + ", Moisture: " + str(sensorArray[1]*100) +"%")
+        
+                    for i3 in sensorDataM:
+                        averageMoisture+=i3/len(sensorDataM)
+        
+                    for i3 in sensorDataT:
+                        averageTemp+=i3/len(sensorDataT)  
+        
+                    print(averageMoisture, averageTemp)
+                    if averageMoisture != 0:
+                        state.Moisture_Humidity_Array[i]=averageMoisture*100 + state.serialCorrector
+                    time.sleep(0.5)
+                    client.publish(("SGS/Plant"+str(i)+"/Moisture"), int(state.Moisture_Humidity_Array[i]))
+                    client.publish("SGS/Log", ("Plant"+str(i)+"/Moisture: " + str(int(state.Moisture_Humidity_Array[i]))))
     
-    
-            if (config.ADS1115_Present):
+            if (config.ADS1115_Present) and useBackupMoisture:
                 state.Moisture_Humidity  = extendedPlants.readExtendedMoisture(1, None, ads1115, None, None) 
                 state.Moisture_Humidity_Array[0] =  state.Moisture_Humidity 
 
@@ -1405,7 +1448,6 @@ if __name__ == '__main__':
     # Other loop*() functions are available that give a threaded interface and a
     # manual interface.
     client.loop_start()
-    mqtt_startVals()
     print "MQTT client started"
     client.publish("SGS/Log", "MQTT Started")
     
@@ -1510,11 +1552,13 @@ if __name__ == '__main__':
              print "OLEDLock released"
 
     
-     
+    
+
     
     # initialize variables
     #
     state.Pump_Water_Full = False
+    mqtt_startVals()
     
     try: 
             
