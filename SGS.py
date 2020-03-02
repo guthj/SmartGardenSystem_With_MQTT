@@ -198,11 +198,11 @@ def mqtt_startVals():
     client.publish("SGS/MotionSensor/Alarm/None", "false")
 
 def mqtt_pushAlarm():  #Runs 1xd to remind if Alarm
-    if state.Alarm_Water:
+    if state.Is_Alarm_Water:
         client.publish("SGS/MotionSensor/Alarm/Water", "true")
         time.sleep(3)
         client.publish("SGS/MotionSensor/Alarm/Water", "false")
-    if state.Alarm_Moisture:
+    if state.Is_Alarm_Moisture:
         client.publish("SGS/MotionSensor/Alarm/Moisture", "true")
         time.sleep(3)
         client.publish("SGS/MotionSensor/Alarm/Moisture", "false")
