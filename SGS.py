@@ -198,7 +198,7 @@ def mqtt_startVals():
     client.publish("SGS/MotionSensor/Alarm/None", "false")
 
 def mqtt_pushAlarm():  #Runs 1xd to remind if Alarm
-    if state.Is_Alarm_Water:
+    if state.Is_Alarm_WaterEmpty:
         client.publish("SGS/MotionSensor/Alarm/Water", "true")
         time.sleep(3)
         client.publish("SGS/MotionSensor/Alarm/Water", "false")
@@ -926,7 +926,8 @@ def updateState():
                         if sensorArray[1] >= 0:
                             sensorDataM.append(sensorArray[1])
                             sensorDataT.append(sensorArray[0])
-                            print("S"+ str(msArray[i2]) + ": Temperature: " + str(sensorArray[0]) + ", Moisture: " + str(sensorArray[1]*100) +"%")
+                            print("S"+ str(msArray[i2]) + ": Temperature: " + str(sensorArray[0]) + ", Moisture: " + str(sensorArray[1]*100)+"%")
+                            client.publish("SGS/Log", "S"+ str(msArray[i2]) + ": Temperature: " + str(sensorArray[0]) + ", Moisture: " + str(sensorArray[1]*100)+"%")
         
                     for i3 in sensorDataM:
                         averageMoisture+=i3/len(sensorDataM)
@@ -939,7 +940,7 @@ def updateState():
                         state.Moisture_Humidity_Array[i]=averageMoisture*100 + state.serialCorrector
                     time.sleep(0.5)
                     client.publish(("SGS/Plant"+str(i)+"/Moisture"), int(state.Moisture_Humidity_Array[i]))
-                    client.publish("SGS/Log", ("Plant"+str(i)+"/Moisture: " + str(int(state.Moisture_Humidity_Array[i]))))
+                    client.publish("SGS/Log", ("Plant"+str(i)+"/Moisture (avg): " + str(int(state.Moisture_Humidity_Array[i]))))
     
             if (config.ADS1115_Present) and useBackupMoisture:
                 state.Moisture_Humidity  = extendedPlants.readExtendedMoisture(1, None, ads1115, None, None) 

@@ -73,15 +73,15 @@ print "############################"
 print "Calibration Complete"
 print "############################"
 
-#f = open("TankCalibration","w+")
-#
-#f.write("{:6.1f}".format(emptyaverage))
-#f.write(",")
-#f.write("{:6.1f}".format(fullaverage))
-#f.close()
-#
-#print "############################"
-#print "Values written to TankCalibration File"
-#print "############################"
-#print "Calibration Complete"
-#print "############################"
+f = open("TankCalibration","w+")
+
+f.write("{:6.1f}".format(emptyaverage))
+f.write(",")
+f.write("{:6.1f}".format(fullaverage))
+f.close()
+
+print "############################"
+print "Values written to TankCalibration File"
+print "############################"
+print "Calibration Complete"
+print "############################"
