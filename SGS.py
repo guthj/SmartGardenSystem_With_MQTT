@@ -125,6 +125,8 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("SGS/enableAutomaticWatering/setOn")
     client.subscribe("SGS/displayONMode/setOn")
     client.subscribe("SGS/runLEDs/setOn")
+    client.subscribe("SGS/WaterTarget/setIncrease")
+    client.subscribe("SGS/WaterTarget/setDecrease")
 
 def on_message(client, userdata, msg):
     print(msg.topic+" "+str(msg.payload))
@@ -172,6 +174,15 @@ def on_message(client, userdata, msg):
             clearLEDs()
             print "tried turning off runLEDs, new State: " + str (state.runLEDs)
             client.publish("SGS/Log", ("Tried turning off runLEDs, new State: " + str (state.runLEDs)))
+            
+    if msg.topic == "SGS/WaterTarget/setIncrease":
+        state.Moisture_Threshold +=1
+        state.Alarm_Moisture = state.Moisture_Threshold -5
+        client.publish("SGS/WaterTarget/Target", state.Moisture_Threshold)
+    if msg.topic == "SGS/WaterTarget/setDecrease":
+        state.Moisture_Threshold -= 1
+        state.Alarm_Moisture = state.Moisture_Threshold -5
+        client.publish("SGS/WaterTarget/Target", state.Moisture_Threshold)
 
         
 def mqtt_startVals():
@@ -196,6 +207,9 @@ def mqtt_startVals():
     client.publish("SGS/MotionSensor/Watering", "false")
     client.publish("SGS/MotionSensor/Alarm/Moisture", "false")
     client.publish("SGS/MotionSensor/Alarm/None", "false")
+    client.publish("SGS/WaterTarget/getDecrease", "false")
+    client.publish("SGS/WaterTarget/getIncrease", "false")
+    client.publish("SGS/WaterTarget/Target", state.Moisture_Threshold)
 
 def mqtt_pushAlarm():  #Runs 1xd to remind if Alarm
     if state.Is_Alarm_WaterEmpty:
@@ -911,6 +925,7 @@ def updateState():
                             print 'Sunlight UV Index (RAW): ' + str(state.Sunlight_UV)
                             print 'Sunlight UV Index: ' + str(state.Sunlight_UVIndex)
                     ################
+            client.publish("SGS/WaterTarget/Target", state.Moisture_Threshold)
             useBackupMoisture=True
             if state.useSerialMoisture:
                 useBackupMoisture=False
