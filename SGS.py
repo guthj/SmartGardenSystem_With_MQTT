@@ -926,6 +926,8 @@ def updateState():
                             print 'Sunlight UV Index: ' + str(state.Sunlight_UVIndex)
                     ################
             client.publish("SGS/WaterTarget/Target", state.Moisture_Threshold)
+            client.publish("SGS/WaterTarget/getDecrease", "false")
+            client.publish("SGS/WaterTarget/getIncrease", "false")
             useBackupMoisture=True
             if state.useSerialMoisture:
                 useBackupMoisture=False
